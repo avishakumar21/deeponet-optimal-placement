@@ -11,6 +11,7 @@ def train_model(model, dataloader, optimizer, num_epochs=10):
     for epoch in range(num_epochs):
         total_loss = 0.0
         for branch1_input, branch2_input, trunk_input, labels in dataloader:
+            print(total_loss)
             loss = model.loss(branch1_input, branch2_input, trunk_input, labels)
 
             # Backprop
