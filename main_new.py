@@ -2,16 +2,18 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from opnn import opnn
+from dataset_prep import get_paths,TransducerDataset
+
+
 
 def train_model(model, dataloader, optimizer, num_epochs=10):
     model.train()
     for epoch in range(num_epochs):
         total_loss = 0.0
         for branch1_input, branch2_input, trunk_input, labels in dataloader:
-            # Forward pass and compute loss using the model's loss method
             loss = model.loss(branch1_input, branch2_input, trunk_input, labels)
 
-            # Backward pass and optimization
+            # Backprop
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -23,18 +25,23 @@ def train_model(model, dataloader, optimizer, num_epochs=10):
 
 if __name__ == "__main__":
     # Define the model dimensions for the branches and trunk
-    branch1_dim = [10, 64, 64]   # Example dimensions for branch 1
-    branch2_dim = [10, 64, 64]   # Example dimensions for branch 2
-    trunk_dim = [20, 64, 64]     # Example dimensions for the trunk
+    bz = 10
+    #torch.Size([10, 3, 195, 610]) torch.Size([10, 2]) torch.Size([10, 195, 610, 2]) torch.Size([10, 162, 512])
+    branch1_dim = [bz, 3, 195, 610] # Example dimensions for branch 1
+    branch2_dim = [bz, 2]   # Example dimensions for branch 2
+    trunk_dim = [bz, 195, 610, 2]     # Example dimensions for the trunk
 
-    # Initialize the model
+    #model
     model = opnn(branch1_dim, branch2_dim, trunk_dim)
 
-    # Define an optimizer (e.g., Adam)
+    #optimizer
     optimizer = Adam(model.parameters(), lr=0.001)
 
-    # Create a DataLoader (assuming `dataloader` is defined)
-    dataloader = DataLoader(...)  # Replace with actual DataLoader
+    #data loader
+    images_path, masks_path, simulation_path = get_paths('data')
+    dataset = TransducerDataset(images_path, simulation_path, loading_method = 'individual')
+    dataloader = DataLoader(dataset, batch_size=bz, shuffle=True, num_workers=2)
+    
 
     # Train the model
     train_model(model, dataloader, optimizer, num_epochs=10)

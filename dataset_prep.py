@@ -7,6 +7,8 @@ import os
 from PIL import Image
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
+import scipy.io
+
 """
 1. ultrasound Image Read in as RGB / Gray
 2. Transducer Location: 2 orientation: a) object x location x xy-coordinate; b) object x location x xy-coordinate
@@ -20,7 +22,8 @@ def get_paths(root_path):
     images_path.sort()
     masks_path = glob.glob(f"{root_path}/masks/*")
     masks_path.sort()
-    simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs/", '**', 'maximum_pressure_distribution*.png'), recursive=True)
+    #simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs", '**', 'maximum_pressure_distribution.mat'), recursive=True)
+    simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs/max_pressure", '*_max_pressure.mat'), recursive=True)
     simulation_path.sort()
    
 
@@ -50,14 +53,14 @@ class TransducerDataset(Dataset):
         self.loading_method = loading_method
 
 
-        self.width = 610
-        self.height = 195
+        self.width = 610 #TODO: change the dimension
+        self.height = 195 #TODO: change the dimension
         
         #Transducer location
-        transducer_locs=np.array([[0]*8,[x-100 for x in [150, 220, 295, 370, 440,515, 585, 660]]]) 
+        transducer_locs=np.array([[0]*8,[x-100 for x in [150., 220., 295., 370., 440.,515., 585., 660.]]]) 
         # CHECK: transducer_locs uses center point of the arc, can swith to arc pixel locations for future / other center point
         transducer_locs = transducer_locs.transpose((1,0))
-        self.transducer_locs = torch.tensor(transducer_locs, dtype=torch.int) 
+        self.transducer_locs = torch.tensor(transducer_locs, dtype=torch.float32) 
 
 
         # Generate array of coordinates / sensor
@@ -80,16 +83,19 @@ class TransducerDataset(Dataset):
 
     def simulation_indv_load(self, index):
         # Process Simulations Individually
-        simulations = np.array(Image.open(self.simulation_paths[index]).convert('RGB'))[220:415, 100:710,:]
-        simulations = np.transpose(simulations, (2, 0, 1))
+        # simulations = np.array(Image.open(self.simulation_paths[index]).convert('RGB'))[220:415, 100:710,:]
+        # simulations = np.transpose(simulations, (2, 0, 1))
+        simulations = scipy.io.loadmat(self.simulation_paths[index])['p_max']
+        simulations = torch.tensor(simulations, dtype=torch.float) 
         return simulations
     
     def simulation_group_load(self, index):
         #Process all Simulations for a individual image
         simulations = []
         for i in range(index*8,(index+1)*8):
-            simulation = np.array(Image.open(self.simulation_paths[i]).convert('RGB'))[220:415, 100:710,:]
-            simulation = np.transpose(simulation, (2, 0, 1))
+            # simulation = np.array(Image.open(self.simulation_paths[i]).convert('RGB'))[220:415, 100:710,:]
+            # simulation = np.transpose(simulation, (2, 0, 1))
+            simulation = scipy.io.loadmat(self.simulation_paths[index])['p_max']
             simulations+=[simulation]
         simulations = np.array(simulations)
         simulations = torch.tensor(simulations, dtype=torch.float) 
