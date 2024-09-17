@@ -30,9 +30,6 @@ def get_paths(root_path):
     return images_path, masks_path, simulation_path, 
 
 
-
-
-
 class TransducerDataset(Dataset):
     def __init__(
         self, 
@@ -56,39 +53,23 @@ class TransducerDataset(Dataset):
         self.loading_method = loading_method
 
 
-        # #Image width and Height
-        self.width = 668
-        self.height = 275
-
-        self.sim_width = 512
-        self.sim_height = 162
-   
+        self.width = 610 #TODO: change the dimension
+        self.height = 195 #TODO: change the dimension
         
-        # #Transducer location
-        #transducer_locs=np.array([[0]*8,[x-100 for x in [40., 124., 208., 292., 376., 460., 544., 628.]]]) 
-        #low_resu_transloc = [40,	101,	163,	225.,	286.,	348.,	410.,	472]
-        transducer_locs=np.array([[0]*8,[40., 124., 208., 292., 376., 460., 544., 628.]]) 
-
-
+        #Transducer location
+        transducer_locs=np.array([[0]*8,[x-100 for x in [150., 220., 295., 370., 440.,515., 585., 660.]]]) 
         # CHECK: transducer_locs uses center point of the arc, can swith to arc pixel locations for future / other center point
         transducer_locs = transducer_locs.transpose((1,0))
         self.transducer_locs = torch.tensor(transducer_locs, dtype=torch.float32) 
 
-        x = np.arange(0, self.sim_height)
-        y = np.arange(0, self.sim_width)
+
+        # Generate array of coordinates / sensor
+        x = np.arange(0, self.width)
+        y = np.arange(0, self.height)
         xx, yy = np.meshgrid(x, y)
         locations = np.stack([xx.ravel(), yy.ravel()], axis=-1)
         self.sensor_locations = locations
-
         
-
-    def get_sensor_location(self):
-        # Generate array of coordinates / sensor
-        return
-        
-
-    def subset_split(self, ratio = 0.7):
-        ...
 
     def __len__(self):
         if self.loading_method =='individual':
@@ -106,36 +87,22 @@ class TransducerDataset(Dataset):
         # simulations = np.transpose(simulations, (2, 0, 1))
         simulations = scipy.io.loadmat(self.simulation_paths[index])['p_max']
         simulations = torch.tensor(simulations, dtype=torch.float) 
-        self.sim_height = simulations.shape[-2]
-        self.sim_width = simulations.shape[-1]
         return simulations
     
-    # def simulation_group_load(self, index): # ALINA 
-    #     #Process all Simulations for a individual image
-    #     simulations = []
-    #     for i in range(index*8,(index+1)*8):
-    #         # simulation = np.array(Image.open(self.simulation_paths[i]).convert('RGB'))[220:415, 100:710,:]
-    #         # simulation = np.transpose(simulation, (2, 0, 1))
-    #         simulation = scipy.io.loadmat(self.simulation_paths[index])['p_max']
-    #         simulations+=[simulation]
-    #     simulations = np.array(simulations)
-    #     simulations = torch.tensor(simulations, dtype=torch.float) 
-    #     return simulations
-
-    def simulation_group_load(self, index): # AVISHA 
+    def simulation_group_load(self, index):
+        #Process all Simulations for a individual image
         simulations = []
-        for i in range(index*8, (index+1)*8):
-            simulation = scipy.io.loadmat(self.simulation_paths[i])['p_max']
-            simulations.append(simulation)
+        for i in range(index*8,(index+1)*8):
+            # simulation = np.array(Image.open(self.simulation_paths[i]).convert('RGB'))[220:415, 100:710,:]
+            # simulation = np.transpose(simulation, (2, 0, 1))
+            simulation = scipy.io.loadmat(self.simulation_paths[index])['p_max']
+            simulations+=[simulation]
         simulations = np.array(simulations)
         simulations = torch.tensor(simulations, dtype=torch.float) 
-        self.sim_height = simulations.shape[-2] #update simulation location coords based on simulation lable size
-        self.sim_width = simulations.shape[-1]
         return simulations
-
     
     def image_load(self, index):
-        image = Image.open(self.image_paths[index]).convert('RGB') 
+        image = Image.open(self.image_paths[index]).convert('RGB')
 
         if self.image_transforms:
             image_transforms = transforms.Compose([
@@ -153,16 +120,15 @@ class TransducerDataset(Dataset):
 
     def eval_locs(self, type = 'sq'):
         #Linear
-        self.get_sensor_location() #cal func to generate sensor location based on simulation
         if type == 'lin':
             locations = self.sensor_locations # array (x,y)
         #Square
         elif type == 'sq':
-            locations = self.sensor_locations.reshape(self.sim_width,self.sim_height,2).transpose(1,0,2) # array of array of (x,y )
+            locations = self.sensor_locations.reshape(self.width,self.height,2).transpose(1,0,2) # array of array of (x,y )
         #Cubic
         else:
             ...
-        return torch.tensor(locations, dtype=torch.float)
+        return torch.tensor(locations, dtype=torch.int)
 
     def __getitem__(self, index):
         if self.loading_method =='individual':
