@@ -35,7 +35,7 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
             total_loss += loss.item()
-            break
+    
         avg_loss = total_loss / (len(dataloader) * dataloader.dataset.sim_height * dataloader.dataset.sim_width)
         self.train_losses.append(avg_loss)
         return avg_loss
@@ -52,7 +52,7 @@ class Trainer:
 
                 val_loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
                 total_val_loss += val_loss.item()
-                break
+  
 
         avg_val_loss = total_val_loss / (len(dataloader_validation) * dataloader_validation.dataset.sim_height * dataloader_validation.dataset.sim_width)
         self.val_losses.append(avg_val_loss)
