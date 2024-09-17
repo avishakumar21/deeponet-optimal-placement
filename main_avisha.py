@@ -6,7 +6,10 @@ from dataset_prep import get_paths, TransducerDataset
 from utils_alina import log_loss, save_loss_to_dated_file, plot_logs,plot_prediction,ensure_directory_exists
 import torch
 
+data_path = 'data/'
 result_folder = 'result/'
+epochs = 100
+
 class Trainer:
     def __init__(self, model, optimizer, device, num_epochs=10):
         self.model = model
@@ -122,7 +125,7 @@ def main(bz, num_epochs=100):
     optimizer = Adam(model.parameters(), lr=0.0001)
 
     # Prepare data
-    images_path, masks_path, simulation_path = get_paths('data/')  # Change this path
+    images_path, masks_path, simulation_path = get_paths(data_path)  # Change this path
 
     # train_val split
     train_val_ratio = 0.8
@@ -142,5 +145,5 @@ def main(bz, num_epochs=100):
     plot_logs(file_paths, output_image=result_folder+"loss_plot.png")
 
 if __name__ == "__main__":
-    main(bz=10,num_epochs=2)
+    main(bz=10,num_epochs=epochs)
     
