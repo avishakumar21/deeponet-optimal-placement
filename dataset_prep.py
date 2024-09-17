@@ -198,6 +198,8 @@ class TransducerDataset(Dataset):
             ...
 
         return image, transducer_locs, locs, simulations
+
+
     
 
 """
