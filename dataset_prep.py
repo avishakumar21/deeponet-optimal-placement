@@ -58,8 +58,8 @@ class TransducerDataset(Dataset):
 
 
         # #Image width and Height
-        self.width = 668
-        self.height = 275
+        self.width = 512
+        self.height = 162
 
         self.sim_width = 512
         self.sim_height = 162
@@ -148,9 +148,10 @@ class TransducerDataset(Dataset):
 
         if self.image_transforms:
             image_transforms = transforms.Compose([
-            transforms.Resize((self.height, self.width)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                #transforms.Resize((self.height, self.width)), #resize
+                transforms.Resize((self.height, self.width), interpolation=transforms.InterpolationMode.BILINEAR),  # resample image
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
             image = image_transforms(image)
         else:

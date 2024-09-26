@@ -13,7 +13,7 @@ import argparse
 # DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\mini deeponet dataset'
 # result_folder = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet low resolution code 2\result'
 DATA_PATH ="data"
-RESULT_FOLDER = "result\result" #change folder name
+RESULT_FOLDER = "result/result" #change folder name
 epochs = 3
 
 class Trainer:
@@ -149,12 +149,12 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     ensure_directory_exists(result_folder)
 
     # Define the architecture of the branches and trunk network
-    branch1_dim = [668*275, 100, 100, 64]  # Geometry branch dimensions (flattened image input followed by layers)
+    branch1_dim = [512*162, 100, 100, 64]  # Geometry branch dimensions (flattened image input followed by layers)
     branch2_dim = [2, 64, 32, 16]  # Source location branch
     trunk_dim = [2, 100, 64, 32]  # Trunk network (grid coordinates)
 
     # Define geometry_dim and output_dim based on your data
-    geometry_dim = (275, 668)  # Image dimensions (height, width)
+    geometry_dim = (162, 512)  # Image dimensions (height, width)
     output_dim = (162 * 512)  # Simulation dimensions (pressure map height and width) #162 * 512
 
     # Initialize model and move it to the device (GPU/CPU)
