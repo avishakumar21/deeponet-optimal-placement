@@ -25,7 +25,6 @@ def get_paths(root_path):
     #simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs", '**', 'maximum_pressure_distribution.mat'), recursive=True)
     simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs/max_pressure", '*_max_pressure.mat'), recursive=True)
     simulation_path.sort()
-    print(f"{root_path}/images/*")
    
 
     return images_path, masks_path, simulation_path, 
@@ -98,14 +97,6 @@ class TransducerDataset(Dataset):
             return len(self.image_paths) # image, 8 tran loc, 8 simu -> 1 sample
         else:
             print("can't recognize loading method")
-
-    def set_dim(self, new_img_height:int, new_img_width:int):
-        self.height = new_img_height
-        self.width = new_img_width
-        if self.image_transforms:
-            print(f"will re-sample the image to {new_img_height} x {new_img_width}")
-        else:
-            print(f'Resized. But current dataset is NOT configed to resample image')
         
     
 

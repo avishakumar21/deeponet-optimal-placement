@@ -3,6 +3,10 @@ import json
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+import torchvision.transforms as transforms
+
+
 
 # Helper function to log loss after each epoch
 def log_loss(loss, temp_file="temp_loss_log.txt"):
@@ -66,6 +70,14 @@ def ensure_directory_exists(directory_path):
         print(f"Directory '{directory_path}' created.")
     else:
         print(f"Directory '{directory_path}' already exists.")
+
+def get_time_YYYYMMDDHH():
+    # Get the current date and time
+    start_time = datetime.now()
+
+    # Format the date and time as "YYYYMMDDHH"
+    formatted_time = start_time.strftime('%Y%m%d%H')
+    return formatted_time
 
 
 
@@ -148,16 +160,16 @@ class SegmentationVisualizer:
         # Plot segmentation on image
         ax[0, 1].imshow(image_np)
         ax[0, 1].imshow(segmentation_np, cmap=self.color_map, alpha=0.5, vmin=self.global_min, vmax=self.global_max)
-        ax[0, 1].set_title('Pressure Map Label on Image')
+        ax[0, 1].set_title('Pressure Simulation on Image')
 
         # Plot prediction on image
         ax[0, 2].imshow(image_np)
         ax[0, 2].imshow(prediction_np, cmap=self.color_map, alpha=0.5)
-        ax[0, 2].set_title('Pressure Map Prediction on Image')
+        ax[0, 2].set_title('Pressure Prediction on Image')
 
         # Plot segmentation
         seg_plot =ax[1, 0].imshow(segmentation_np, cmap=self.color_map)
-        ax[1, 0].set_title('Pressure')
+        ax[1, 0].set_title('Simulation')
 
         # Plot prediction
         ax[1, 1].imshow(prediction_np, cmap=self.color_map)
@@ -166,7 +178,7 @@ class SegmentationVisualizer:
         # Plot prediction - segmentation
         diff = prediction_np - segmentation_np
         ax[1, 2].imshow(diff, cmap=self.color_map)
-        ax[1, 2].set_title('Prediction - Pressure')
+        ax[1, 2].set_title('Prediction - Simulation')
 
         if shared_colorbar_ax is None:
             # Create a color axis that spans across the entire figure
@@ -178,19 +190,34 @@ class SegmentationVisualizer:
         #plt.show()
         return fig
 
-    def visualize_batch(self, images, segmentations, predictions, result_folder = ''):
+    def visualize_batch(self, images, simulation, predictions, batch, result_folder = ''):
         # Loop through batch and plot each image/segmentation/label/prediction set
         for i in range(images.shape[0]):
-            fig = self.plot(images[i], segmentations[i], predictions[i])
-            fig.savefig(result_folder+f'test_sampe_{i}.png')
+            #resize image
+            #print(simulation[i].shape[-2], simulation[i].shape[-1],'img',images[i].shape )
+            # resize_transform = transforms.Compose([
+            #     transforms.Resize((simulation[i].shape[-2], simulation[i].shape[-1]))  # Resize to sim shape
+            # ])
+            # resized_image = resize_transform(images[i])
+            fig = self.plot(images[i], simulation[i], predictions[i])
+            fig.savefig(os.path.join(result_folder, f'test_sampe_bz_{batch}_{i}.png') )
 
-def plot_prediction(image, simulation, prediction, result_folder=''):
+def plot_prediction(image, simulation, prediction, batch, result_folder=''):
     visualizer = SegmentationVisualizer()
     images_01 = visualizer.minmax_normalize(image)
     simulations_01 = visualizer.minmax_normalize(simulation)
     predictions_01 = visualizer.minmax_normalize(prediction)
-    print(images_01.shape,simulations_01.shape,predictions_01.shape)
-    visualizer.visualize_batch(images_01, simulations_01, predictions_01,result_folder=result_folder)
+    #print(images_01.shape,simulations_01.shape,predictions_01.shape)
+    visualizer.visualize_batch(images_01, simulations_01, predictions_01, batch, result_folder=result_folder)
 
 
 
+## -----------------  Storage ------------------------
+def store_model(model,optimizer,epoch, result_path):
+    checkpoint = {
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    'epoch': epoch,  # if you want to resume from a specific epoch
+    }
+    
+    torch.save(checkpoint, os.path.join(result_path, 'model_checkpoint.pth'))
