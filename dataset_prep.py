@@ -18,17 +18,17 @@ import scipy.io
 
 def get_paths(root_path):
     # given path to dataset (contain sub directory images, masks, simulation_outputs)
-    images_path = glob.glob(f"{root_path}/images/*")
+    images_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'images'), '*'))
     images_path.sort()
-    masks_path = glob.glob(f"{root_path}/masks/*")
-    masks_path.sort()
-    #simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs", '**', 'maximum_pressure_distribution.mat'), recursive=True)
-    simulation_path = glob.glob(os.path.join(f"{root_path}/simulation_outputs/max_pressure", '*_max_pressure.mat'), recursive=True)
+    # masks_path = glob.glob(f"{root_path}/masks/*")
+    # masks_path.sort()
+    simulation_path = glob.glob(os.path.join((root_path).format(data_type = 'simulation_outputs'), '*_max_pressure.mat'), recursive=True)
     simulation_path.sort()
-    print(f"{root_path}/images/*")
-   
+    print('image path', (f"{root_path}/*").format(data_type = 'images'))
+    print('simulation path', (f"{root_path}/*").format(data_type = 'simulation_outputs'))
 
-    return images_path, masks_path, simulation_path, 
+    #return images_path, masks_path, simulation_path, 
+    return images_path, simulation_path
 
 
 
@@ -86,10 +86,6 @@ class TransducerDataset(Dataset):
     def get_sensor_location(self):
         # Generate array of coordinates / sensor
         return
-        
-
-    def subset_split(self, ratio = 0.7):
-        ...
 
     def __len__(self):
         if self.loading_method =='individual':

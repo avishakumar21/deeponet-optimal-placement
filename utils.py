@@ -190,7 +190,7 @@ class SegmentationVisualizer:
         #plt.show()
         return fig
 
-    def visualize_batch(self, images, simulation, predictions, batch, result_folder = ''):
+    def visualize_batch(self, images, simulation, predictions, batch, comment, result_folder = ''):
         # Loop through batch and plot each image/segmentation/label/prediction set
         for i in range(images.shape[0]):
             #resize image
@@ -200,15 +200,16 @@ class SegmentationVisualizer:
             # ])
             # resized_image = resize_transform(images[i])
             fig = self.plot(images[i], simulation[i], predictions[i])
-            fig.savefig(os.path.join(result_folder, f'test_sampe_bz_{batch}_{i}.png') )
+            fig.savefig(os.path.join(result_folder, f'{comment}sample_bz_{batch}_{i}.png') )
+            plt.close()
 
-def plot_prediction(image, simulation, prediction, batch, result_folder=''):
+def plot_prediction(image, simulation, prediction, batch, comment = '', result_folder=''):
     visualizer = SegmentationVisualizer()
     images_01 = visualizer.minmax_normalize(image)
     simulations_01 = visualizer.minmax_normalize(simulation)
     predictions_01 = visualizer.minmax_normalize(prediction)
     #print(images_01.shape,simulations_01.shape,predictions_01.shape)
-    visualizer.visualize_batch(images_01, simulations_01, predictions_01, batch, result_folder=result_folder)
+    visualizer.visualize_batch(images_01, simulations_01, predictions_01, batch, comment = comment,result_folder=result_folder)
 
 
 

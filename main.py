@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader,Subset
 from torch.optim import Adam
 import os
 
@@ -14,7 +14,13 @@ import argparse
 # result_folder = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet low resolution code 2\result'
 DATA_PATH ="data"
 RESULT_FOLDER = "result/result" #change folder name
-epochs = 3
+
+epochs = 8 #total epochs to run
+VIZ_epoch_period = 3 #visualize sample validation set image every VIZ_epoch_period epoch
+BATCHSIZE = 2 
+
+EXPECTED_IMG_SIZE = (162, 512)
+EXPECTED_SIM_SIZE = (162, 512)
 
 class Trainer:
     def __init__(self, model, optimizer, device, num_epochs=1000):
@@ -86,6 +92,7 @@ class Trainer:
     def test(self, dataloader_test, epochs = 0):
         self.model.eval()  # Set the model to evaluation mode
         total_test_loss = 0.0
+        total_samples = 0 
 
         with torch.no_grad():
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader_test):
@@ -96,17 +103,44 @@ class Trainer:
 
                 test_loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
                 total_test_loss += test_loss.item()
-                #plot sample prediction:
-                prediction = self.model(branch1_input, branch2_input, trunk_input)
-                prediction = torch.mean(prediction, dim=1)
-                plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, result_folder=self.result_folder)
+                total_samples += labels.numel()
 
-        avg_test_loss = total_test_loss / (len(dataloader_test) * dataloader_test.dataset.sim_height * dataloader_test.dataset.sim_width)
+                #plot sample prediction:
+                # prediction = self.model(branch1_input, branch2_input, trunk_input)
+                # prediction = torch.mean(prediction, dim=1)
+                # plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, result_folder=self.result_folder)
+
+        self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
+
+        avg_test_loss = total_test_loss / total_samples
         self.test_loss = avg_test_loss
         return avg_test_loss
+    
+    def visualize_prediction(self, dataloader, comment = '', subset = True):
+        if subset:
+            # Select a subset of indices, e.g., the first 100 samples
+            subset_indices = list(range(BATCHSIZE))
+            # Create a subset using the Subset class
+            subset_dataset = Subset(dataloader.dataset, subset_indices)
+            # Create a new DataLoader with this subset
+            dataloader = DataLoader(subset_dataset, batch_size=BATCHSIZE, shuffle=False)
 
-    def train(self, dataloader, dataloader_validation, dataloader_test=None):
+        #epoch can be int to represent epoch / string 'end' to represent end to trainning
+        self.model.eval()  # Set the model to evaluation mode
+        with torch.no_grad():
+            for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader):
+                prediction = self.model(branch1_input, branch2_input, trunk_input)
+                prediction = torch.mean(prediction, dim=1)
+                plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
+        
+        return True
+
+
+    def train(self, dataloader, dataloader_validation, dataloader_test):
+        # Check Result Directory
         ensure_directory_exists(self.result_folder)
+
+        # Train + Validate Model
         for epoch in range(self.num_epochs):
             train_loss = self.train_one_epoch(dataloader)
             val_loss = self.val_one_epoch(dataloader_validation)
@@ -116,22 +150,24 @@ class Trainer:
             
             print(f"Epoch [{epoch+1}/{self.num_epochs}], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}")
 
-            # every 5000, some sample viz  
+            # every X epoch, some sample viz 
+            if epoch % VIZ_epoch_period == 0:
+                self.visualize_prediction(dataloader_validation, comment = f'val_ep{epoch}',subset=True)
 
-        # After training, perform testing
+        # Test Model
         if dataloader_test is not None:
             test_loss = self.test(dataloader_test)
             print(f"Test Loss: {test_loss:.4f}")
 
-     
+        # Store model
         store_model(self.model,self.optimizer, epoch, self.result_folder)
         return self.model
     
+
+""" old load data
 def load_data(data_path, bz):
     images_path, masks_path, simulation_path = get_paths(data_path)  # Change this path
     print('prepared data, model, optimizer')
-
-    # train_val split
     train_val_ratio = 0.8
     split_idx = int(len(images_path)*train_val_ratio)-1
     dataset_train = TransducerDataset(images_path[:split_idx], simulation_path[:split_idx*8], loading_method='individual')
@@ -141,21 +177,37 @@ def load_data(data_path, bz):
     dataloader_valid = DataLoader(dataset_valid, batch_size=bz, shuffle=True, num_workers=2)
     dataloader_test = DataLoader(dataset_test, batch_size=bz, shuffle=True, num_workers=2)
     return dataloader_train, dataloader_valid,dataloader_test
+""" 
+
+def load_data_by_split(data_path, bz, shuffle = True):
+    print('-'*15, 'DATA READIN BY SPLIT', '-'*15)
+    split_path_dict = {}
+    for split_name in ['train','val','test']:
+        split_data_path=os.path.join(data_path, '{data_type}',split_name)
+        images_path,simulation_path = get_paths(split_data_path)
+        dataset_ = TransducerDataset(images_path, simulation_path, loading_method='individual')
+        dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=2)
+        split_path_dict[split_name] = dataloader_
+
+    return list(split_path_dict.values())
 
 def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description = ""):
     #Use GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Specify Unique Directories for result
+    print('-'*15, 'CHECK RESULT DIRECTORY', '-'*15)
     result_folder = result_folder+get_time_YYYYMMDDHH()+'_'+folder_description
     ensure_directory_exists(result_folder)
 
     # Define the architecture of the branches and trunk network
-    branch1_dim = [512*162, 100, 100, 64]  # Geometry branch dimensions (flattened image input followed by layers)
+    branch1_dim = [EXPECTED_IMG_SIZE[1]*EXPECTED_IMG_SIZE[0], 100, 100, 64]  # Geometry branch dimensions (flattened image input followed by layers)
     branch2_dim = [2, 64, 32, 16]  # Source location branch
     trunk_dim = [2, 100, 64, 32]  # Trunk network (grid coordinates)
 
     # Define geometry_dim and output_dim based on your data
-    geometry_dim = (162, 512)  # Image dimensions (height, width)
-    output_dim = (162 * 512)  # Simulation dimensions (pressure map height and width) #162 * 512
+    geometry_dim = EXPECTED_IMG_SIZE  # Image dimensions (height, width)
+    output_dim = EXPECTED_SIM_SIZE[0] * EXPECTED_SIM_SIZE[1]  # Simulation dimensions (pressure map height and width) #162 * 512
 
     # Initialize model and move it to the device (GPU/CPU)
     model = opnn(branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim).to(device)
@@ -164,9 +216,10 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     optimizer = Adam(model.parameters(), lr=0.0001)
 
     # Prepare data
-    dataloader_train, dataloader_valid,dataloader_test = load_data(DATA_PATH, bz)
+    dataloader_train, dataloader_valid,dataloader_test = load_data_by_split(DATA_PATH, bz)
 
     # Train the model
+    print('-'*15, 'TRAIN', '-'*15)
     trainer = Trainer(model, optimizer, device, num_epochs)
     trainer.set_result_path(result_folder)
     model = trainer.train(dataloader_train, dataloader_valid, dataloader_test)
@@ -175,7 +228,7 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     file_paths = [trainer.train_log_path,trainer.val_log_path]
     plot_logs(file_paths, output_image=os.path.join(trainer.result_folder, "loss_plot.png"))
 
-    #Package Experiment data into a new folder
+    
 if __name__ == "__main__":
     # Add an optional exp description argument
     parser = argparse.ArgumentParser(description="Experiment id or brief description, no space or slash allowed. Good Example: high_resolution_1.")
@@ -183,5 +236,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Call the main function and pass the argument
-    main(bz=3,num_epochs=epochs, result_folder=RESULT_FOLDER, folder_description=args.exp_description)
+    main(bz=BATCHSIZE,num_epochs=epochs, result_folder=RESULT_FOLDER, folder_description=args.exp_description)
     
