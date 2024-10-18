@@ -23,3 +23,6 @@ The code expects the data to be organized in the following structure:
 ├── data/ │ \\
   ├── train/ │ \\
   ├── train/ │ \\
+
+
+## Running the Code
