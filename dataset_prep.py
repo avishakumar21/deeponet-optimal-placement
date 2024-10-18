@@ -47,7 +47,6 @@ class TransducerDataset(Dataset):
         loading_method: str, inidividual / group.
                 - inidividual: treat each transducer location - image pair as one sample
                 - group: treat each image and corresponding 8 transducer location as one object
-        
         """
         self.image_paths = image_path
         self.simulation_paths = simulation_path
