@@ -68,7 +68,8 @@ class TransducerDataset(Dataset):
         # #Transducer location
         #transducer_locs=np.array([[0]*8,[x-100 for x in [40., 124., 208., 292., 376., 460., 544., 628.]]]) 
         #low_resu_transloc = [40,	101,	163,	225.,	286.,	348.,	410.,	472]
-        transducer_locs=np.array([[0]*8,[40., 124., 208., 292., 376., 460., 544., 628.]]) 
+        #transducer_locs=np.array([[0]*8,[40., 124., 208., 292., 376., 460., 544., 628.]]) # FOR HIGH RES
+        transducer_locs=np.array([[0]*8,[40.,	101.,	163.,	225.,	286.,	348.,	410.,	472.]]) # FOR LOW RES
 
 
         # CHECK: transducer_locs uses center point of the arc, can swith to arc pixel locations for future / other center point
@@ -207,6 +208,7 @@ class TransducerDataset(Dataset):
         else:
             ...
 
+        #simulations = (simulations - simulations.mean()) / simulations.std()
         return image, transducer_locs, locs, simulations
 
 

@@ -3,21 +3,24 @@ from torch.utils.data import DataLoader,Subset
 from torch.optim import Adam
 import os
 
-from opnn import opnn
+from opnn_transformer import opnn
 from dataset_prep import get_paths, TransducerDataset
 from utils import log_loss, save_loss_to_dated_file, plot_logs,plot_prediction,store_model
 from utils import ensure_directory_exists,get_time_YYYYMMDDHH
 import argparse
+from torch.optim.lr_scheduler import StepLR
+
 
 #!!! No slash at the end of the path
-# DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\mini deeponet dataset'
-# result_folder = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet low resolution code 2\result'
-DATA_PATH ="data"
-RESULT_FOLDER = "result/result" #change folder name
+DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet dataset 1000'
+RESULT_FOLDER = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet result 1000'
+#DATA_PATH ="data"
+#RESULT_FOLDER = "result/result" #change folder name
 
-epochs = 8 #total epochs to run
-VIZ_epoch_period = 3 #visualize sample validation set image every VIZ_epoch_period epoch
-BATCHSIZE = 2 
+epochs = 1000 #total epochs to run
+VIZ_epoch_period = 200 #visualize sample validation set image every VIZ_epoch_period
+BATCHSIZE = 16 
+STEP_SIZE = 200 
 
 EXPECTED_IMG_SIZE = (162, 512)
 EXPECTED_SIM_SIZE = (162, 512)
@@ -63,7 +66,7 @@ class Trainer:
             #count sample
             total_samples += labels.numel()
 
-            break
+            #break
         avg_loss = total_loss / total_samples
         #norm total_loss
         self.train_losses.append(avg_loss)
@@ -129,20 +132,21 @@ class Trainer:
         self.model.eval()  # Set the model to evaluation mode
         with torch.no_grad():
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader):
-                prediction = self.model(branch1_input, branch2_input, trunk_input)
+                prediction = self.model(branch1_input.to(self.device), branch2_input.to(self.device), trunk_input.to(self.device))
                 prediction = torch.mean(prediction, dim=1)
                 plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
         
         return True
 
 
-    def train(self, dataloader, dataloader_validation, dataloader_test):
+    def train(self, dataloader, dataloader_validation, dataloader_test, scheduler):
         # Check Result Directory
         ensure_directory_exists(self.result_folder)
 
         # Train + Validate Model
         for epoch in range(self.num_epochs):
             train_loss = self.train_one_epoch(dataloader)
+            scheduler.step()
             val_loss = self.val_one_epoch(dataloader_validation)
             
             log_loss(train_loss, temp_file=self.train_log_path)
@@ -210,10 +214,18 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     output_dim = EXPECTED_SIM_SIZE[0] * EXPECTED_SIM_SIZE[1]  # Simulation dimensions (pressure map height and width) #162 * 512
 
     # Initialize model and move it to the device (GPU/CPU)
-    model = opnn(branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim).to(device)
+    # model = opnn(branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim).to(device) # for CNN
+    model = opnn(branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim, patch_size = 9).to(device) # for transformer
+
+
 
     # Initialize optimizer
-    optimizer = Adam(model.parameters(), lr=0.0001)
+    #optimizer = Adam(model.parameters(), lr=0.0001) 
+    optimizer = Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
+
+
+    scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=0.5)  # Reduce LR every 500 steps
+
 
     # Prepare data
     dataloader_train, dataloader_valid,dataloader_test = load_data_by_split(DATA_PATH, bz)
@@ -222,7 +234,7 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     print('-'*15, 'TRAIN', '-'*15)
     trainer = Trainer(model, optimizer, device, num_epochs)
     trainer.set_result_path(result_folder)
-    model = trainer.train(dataloader_train, dataloader_valid, dataloader_test)
+    model = trainer.train(dataloader_train, dataloader_valid, dataloader_test, scheduler)
 
     #Plot Losses
     file_paths = [trainer.train_log_path,trainer.val_log_path]
