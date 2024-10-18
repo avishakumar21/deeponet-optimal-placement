@@ -26,3 +26,7 @@ The code expects the data to be organized in the following structure:
 
 
 ## Running the Code
+```
+ython3 main.py <some_exp_description>
+```
+<some_exp_description> is an optional breif description of this run. NO SPACE. It will be used for the folder name to store the result of the experiment run.
