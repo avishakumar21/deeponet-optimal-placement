@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class opnn(nn.Module):
-    def __init__(self, branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim):
+    def __init__(self, branch2_dim, trunk_dim, geometry_dim):
         super(opnn, self).__init__()
 
         # Define the CNN for the geometry image (Branch 1)
@@ -25,7 +25,7 @@ class opnn(nn.Module):
             nn.ReLU(),
             nn.Linear(branch2_dim[1], branch2_dim[2]),
             nn.ReLU(),
-            nn.Linear(branch2_dim[2], 64)  # Adjust output to 64 features to match y_br
+            nn.Linear(branch2_dim[2], branch2_dim[3]) 
         )
 
         # Trunk network (adjust output to 64 features)
@@ -34,7 +34,7 @@ class opnn(nn.Module):
             nn.Tanh(),
             nn.Linear(trunk_dim[1], trunk_dim[2]),
             nn.Tanh(),
-            nn.Linear(trunk_dim[2], 64)  # Adjust trunk output to 64 features
+            nn.Linear(trunk_dim[2], branch2_dim[3])  
         )
 
     def forward(self, geometry, source_loc, coords):
@@ -56,12 +56,17 @@ class opnn(nn.Module):
 
         # Process coordinates through trunk network
         y_tr = self._trunk(coords)
-        #print(y_br1.shape,y_br2.shape, y_tr.shape)
         # Perform tensor product over the last dimension of y_br and y_tr
-        y_out = torch.einsum("ij,k...j->ik...", y_br, y_tr)
+        y_out = torch.einsum("bf,bhwf->bhw", y_br, y_tr)
+
         return y_out
     
     def loss(self, geometry, source_loc, coords, target_pressure):
         y_out = self.forward(geometry, source_loc, coords)
-        loss = ((y_out - target_pressure) ** 2).mean()
+        loss = ((y_out - target_pressure) ** 2).mean() #L2
+        # numerator = torch.norm(y_out - target_pressure, p=2)
+        # denominator = torch.norm(target_pressure, p=2) + 1e-8  # Add a small value to avoid division by zero
+
+        # loss = numerator / denominator
+
         return loss

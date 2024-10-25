@@ -3,7 +3,9 @@ from torch.utils.data import DataLoader,Subset
 from torch.optim import Adam
 import os
 
-from opnn_transformer import opnn
+#from opnn_transformer import opnn
+from opnn import opnn
+
 from dataset_prep import get_paths, TransducerDataset
 from utils import log_loss, save_loss_to_dated_file, plot_logs,plot_prediction,store_model
 from utils import ensure_directory_exists,get_time_YYYYMMDDHH
@@ -17,7 +19,7 @@ RESULT_FOLDER = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet res
 #DATA_PATH ="data"
 #RESULT_FOLDER = "result/result" #change folder name
 
-epochs = 1000 #total epochs to run
+epochs = 4000 #total epochs to run
 VIZ_epoch_period = 200 #visualize sample validation set image every VIZ_epoch_period
 BATCHSIZE = 16 
 STEP_SIZE = 200 
@@ -113,7 +115,7 @@ class Trainer:
                 # prediction = torch.mean(prediction, dim=1)
                 # plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, result_folder=self.result_folder)
 
-        self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
+        #self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
 
         avg_test_loss = total_test_loss / total_samples
         self.test_loss = avg_test_loss
@@ -134,7 +136,7 @@ class Trainer:
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader):
                 prediction = self.model(branch1_input.to(self.device), branch2_input.to(self.device), trunk_input.to(self.device))
                 prediction = torch.mean(prediction, dim=1)
-                plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
+                #plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
         
         return True
 
@@ -168,21 +170,6 @@ class Trainer:
         return self.model
     
 
-""" old load data
-def load_data(data_path, bz):
-    images_path, masks_path, simulation_path = get_paths(data_path)  # Change this path
-    print('prepared data, model, optimizer')
-    train_val_ratio = 0.8
-    split_idx = int(len(images_path)*train_val_ratio)-1
-    dataset_train = TransducerDataset(images_path[:split_idx], simulation_path[:split_idx*8], loading_method='individual')
-    dataset_valid = TransducerDataset(images_path[split_idx:-2], simulation_path[split_idx*8:-16], loading_method='individual')
-    dataset_test = TransducerDataset(images_path[-2:], simulation_path[-16:], loading_method='individual')
-    dataloader_train = DataLoader(dataset_train, batch_size=bz, shuffle=True, num_workers=2)
-    dataloader_valid = DataLoader(dataset_valid, batch_size=bz, shuffle=True, num_workers=2)
-    dataloader_test = DataLoader(dataset_test, batch_size=bz, shuffle=True, num_workers=2)
-    return dataloader_train, dataloader_valid,dataloader_test
-""" 
-
 def load_data_by_split(data_path, bz, shuffle = True):
     print('-'*15, 'DATA READIN BY SPLIT', '-'*15)
     split_path_dict = {}
@@ -196,7 +183,6 @@ def load_data_by_split(data_path, bz, shuffle = True):
     return list(split_path_dict.values())
 
 def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description = ""):
-    #Use GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Specify Unique Directories for result
@@ -205,17 +191,17 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     ensure_directory_exists(result_folder)
 
     # Define the architecture of the branches and trunk network
-    branch1_dim = [EXPECTED_IMG_SIZE[1]*EXPECTED_IMG_SIZE[0], 100, 100, 64]  # Geometry branch dimensions (flattened image input followed by layers)
-    branch2_dim = [2, 64, 32, 16]  # Source location branch
-    trunk_dim = [2, 100, 64, 32]  # Trunk network (grid coordinates)
+    #branch1_dim = [EXPECTED_IMG_SIZE[1]*EXPECTED_IMG_SIZE[0], 100, 100, 64]  # Geometry branch dimensions (flattened image input followed by layers)
+    branch2_dim = [2, 32, 32, 64]  # Source location branch
+    trunk_dim = [2, 100, 100, 64]  # Trunk network (grid coordinates)
 
     # Define geometry_dim and output_dim based on your data
     geometry_dim = EXPECTED_IMG_SIZE  # Image dimensions (height, width)
-    output_dim = EXPECTED_SIM_SIZE[0] * EXPECTED_SIM_SIZE[1]  # Simulation dimensions (pressure map height and width) #162 * 512
+    #output_dim = EXPECTED_SIM_SIZE[0] * EXPECTED_SIM_SIZE[1]  # Simulation dimensions (pressure map height and width) #162 * 512
 
     # Initialize model and move it to the device (GPU/CPU)
-    # model = opnn(branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim).to(device) # for CNN
-    model = opnn(branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim, patch_size = 9).to(device) # for transformer
+    model = opnn(branch2_dim, trunk_dim, geometry_dim).to(device) # for CNN
+    # model = opnn(branch2_dim, trunk_dim, geometry_dim, patch_size = 9).to(device) # for transformer
 
 
 

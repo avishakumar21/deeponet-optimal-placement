@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math 
 
 
 class PatchEmbedding(nn.Module):
@@ -47,7 +48,7 @@ class TransformerBranch(nn.Module):
 
 
 class opnn(nn.Module):
-    def __init__(self, branch1_dim, branch2_dim, trunk_dim, geometry_dim, output_dim, patch_size=16, embed_dim=256, num_heads=16, num_layers=6, mlp_dim=1024, dropout=0.1):
+    def __init__(self, branch2_dim, trunk_dim, geometry_dim, patch_size=9, embed_dim=256, num_heads=16, num_layers=6, mlp_dim=1024, dropout=0.1):
         super(opnn, self).__init__()
 
         # Patch embedding for the transformer branch
@@ -65,7 +66,7 @@ class opnn(nn.Module):
             nn.ReLU(),
             nn.Linear(branch2_dim[1], branch2_dim[2]),
             nn.ReLU(),
-            nn.Linear(branch2_dim[2], 64)  # Adjust output to 64 features to match y_br
+            nn.Linear(branch2_dim[2], branch2_dim[3])  # Adjust output to 64 features to match y_br
         )
 
         # Trunk network (adjust output to 64 features)
@@ -74,7 +75,7 @@ class opnn(nn.Module):
             nn.Tanh(),
             nn.Linear(trunk_dim[1], trunk_dim[2]),
             nn.Tanh(),
-            nn.Linear(trunk_dim[2], 64)  # Adjust trunk output to 64 features
+            nn.Linear(trunk_dim[2], branch2_dim[3])  # Adjust trunk output to 64 features
         )
 
     def forward(self, geometry, source_loc, coords):
@@ -85,42 +86,37 @@ class opnn(nn.Module):
 
         # Process source location through FC network
         y_br2 = self._branch2(source_loc)
+        br1size = y_br1.size()
+        br2size = y_br2.size()
+        #print(f"branch 1 size: {br1size}")
+        #print(f"branch 2 size: {br2size}")
 
         # Combine branch outputs
         y_br = y_br1 * y_br2
+        brsize = y_br.size()
+        #print(f"branches size: {brsize}")
 
         # Process coordinates through trunk network
         y_tr = self._trunk(coords)
+        trsize = y_tr.size()
+        #print(f"trunk size: {trsize}")
 
         # Perform tensor product over the last dimension of y_br and y_tr
-        y_out = torch.einsum("ij,k...j->ik...", y_br, y_tr)
+        y_out = torch.einsum("bf,bhwf->bhw", y_br, y_tr)
+        output_size = y_out.size()
+        #print(f"ouput size: {output_size}")
+        # take the diag of first two dimensions, [162, 512]
         return y_out
     
     
     def loss(self, geometry, source_loc, coords, target_pressure):
         y_out = self.forward(geometry, source_loc, coords)
+        prediction_shape = y_out.size()
+        target_pressure_shape = target_pressure.size()
+
+        print(f"target pressure size: {target_pressure_shape}")
+        print(f"prediction size: {prediction_shape}")
         loss = ((y_out - target_pressure) ** 2).mean()
         return loss
-    
-    # def loss(self, geometry, source_loc, coords, target_pressure):
-    #     # Get the predictions from the model
-    #     y_out = self.forward(geometry, source_loc, coords)
 
-    #     # Normalize the predictions to the same scale as the targets
-    #     y_out = (y_out - y_out.mean()) / (y_out.std() + 1e-8)
-
-    #     # Calculate the loss
-    #     loss = ((y_out - target_pressure) ** 2).mean()
-    #     return loss
-
-
-    # def loss(self, geometry, source_loc, coords, target_pressure):
-        # y_out = self.forward(geometry, source_loc, coords)
-        # y_out = y_out.mean(dim=1)  # New shape: [16, 162, 512]
-        # assert y_out.shape == target_pressure.shape, f"Shape mismatch: {y_out.shape} vs {target_pressure.shape}"
-
-        # criterion = nn.SmoothL1Loss()  # or nn.MSELoss()
-        # loss = criterion(y_out, target_pressure)
-        # l2_reg = sum(param.norm(2) for param in self.parameters())  # L2 regularization
-        # return loss + 1e-4 * l2_reg
 

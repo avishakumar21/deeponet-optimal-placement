@@ -47,7 +47,7 @@ class TransducerDataset(Dataset):
         loading_method: str, inidividual / group.
                 - inidividual: treat each transducer location - image pair as one sample
                 - group: treat each image and corresponding 8 transducer location as one object
-                - loc_<location_index>: load only the dataset of transducer in 1 location
+        
         """
         self.image_paths = image_path
         self.simulation_paths = simulation_path
@@ -93,8 +93,6 @@ class TransducerDataset(Dataset):
             return len(self.simulation_paths) # image, tran loc, simu -> 1 sample
         elif self.loading_method == 'group':
             return len(self.image_paths) # image, 8 tran loc, 8 simu -> 1 sample
-        elif self.loading_method[:3] == 'loc':
-            return len(self.image_paths) # image, 1 tran loc, 1 simu -> 1 sample
         else:
             print("can't recognize loading method")
 
@@ -106,8 +104,6 @@ class TransducerDataset(Dataset):
         else:
             print(f'Resized. But current dataset is NOT configed to resample image')
         
-    
-
     def simulation_indv_load(self, index):
         # Process Simulations Individually
         # simulations = np.array(Image.open(self.simulation_paths[index]).convert('RGB'))[220:415, 100:710,:]
@@ -117,6 +113,18 @@ class TransducerDataset(Dataset):
         self.sim_height = simulations.shape[-2]
         self.sim_width = simulations.shape[-1]
         return simulations
+    
+    # def simulation_group_load(self, index): # ALINA 
+    #     #Process all Simulations for a individual image
+    #     simulations = []
+    #     for i in range(index*8,(index+1)*8):
+    #         # simulation = np.array(Image.open(self.simulation_paths[i]).convert('RGB'))[220:415, 100:710,:]
+    #         # simulation = np.transpose(simulation, (2, 0, 1))
+    #         simulation = scipy.io.loadmat(self.simulation_paths[index])['p_max']
+    #         simulations+=[simulation]
+    #     simulations = np.array(simulations)
+    #     simulations = torch.tensor(simulations, dtype=torch.float) 
+    #     return simulations
 
     def simulation_group_load(self, index): # AVISHA 
         simulations = []
@@ -128,7 +136,6 @@ class TransducerDataset(Dataset):
         self.sim_height = simulations.shape[-2] #update simulation location coords based on simulation lable size
         self.sim_width = simulations.shape[-1]
         return simulations
-    
 
     
     def image_load(self, index):
@@ -192,19 +199,6 @@ class TransducerDataset(Dataset):
 
             #Simulation
             simulations = self.simulation_group_load(index)
-        elif self.loading_method[:3] == 'loc':
-            loc_index = int(self.loading_method[-1])
-            #Images
-            image = self.image_load(index)
-
-            #Transducer location
-            transducer_locs = self.transducer_locs[loc_index]
-            
-            #evaludation location (sensor for deepOnet)
-            locs = self.eval_locs(type = 'sq')
-
-            #Simulation
-            simulations = self.simulation_group_load(index)[loc_index]
         else:
             ...
 
