@@ -18,6 +18,7 @@ DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet dataset
 RESULT_FOLDER = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet result 1000'
 #DATA_PATH ="data"
 #RESULT_FOLDER = "result/result" #change folder name
+loading_method = 'loc_7' #individual
 
 epochs = 4000 #total epochs to run
 VIZ_epoch_period = 200 #visualize sample validation set image every VIZ_epoch_period
@@ -176,7 +177,7 @@ def load_data_by_split(data_path, bz, shuffle = True):
     for split_name in ['train','val','test']:
         split_data_path=os.path.join(data_path, '{data_type}',split_name)
         images_path,simulation_path = get_paths(split_data_path)
-        dataset_ = TransducerDataset(images_path, simulation_path, loading_method='individual')
+        dataset_ = TransducerDataset(images_path, simulation_path, loading_method=loading_method)
         dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=2)
         split_path_dict[split_name] = dataloader_
 
