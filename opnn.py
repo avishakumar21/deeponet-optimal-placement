@@ -63,10 +63,11 @@ class opnn(nn.Module):
     
     def loss(self, geometry, source_loc, coords, target_pressure):
         y_out = self.forward(geometry, source_loc, coords)
-        loss = ((y_out - target_pressure) ** 2).mean() #L2
-        # numerator = torch.norm(y_out - target_pressure, p=2)
-        # denominator = torch.norm(target_pressure, p=2) + 1e-8  # Add a small value to avoid division by zero
+        #loss = ((y_out - target_pressure) ** 2).mean() #L2
+        numerator = torch.norm(y_out - target_pressure, p=2)
+        denominator = torch.norm(target_pressure, p=2) # Avoid division by zero
+        loss = (numerator / denominator) ** 2
+        #print(f"Relative L2 Loss: {(numerator / denominator).item()}")
 
-        # loss = numerator / denominator
 
         return loss

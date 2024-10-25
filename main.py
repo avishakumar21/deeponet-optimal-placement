@@ -18,9 +18,8 @@ DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet dataset
 RESULT_FOLDER = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet result 1000'
 #DATA_PATH ="data"
 #RESULT_FOLDER = "result/result" #change folder name
-loading_method = 'loc_7' #individual
 
-epochs = 4000 #total epochs to run
+epochs = 10 #total epochs to run
 VIZ_epoch_period = 200 #visualize sample validation set image every VIZ_epoch_period
 BATCHSIZE = 16 
 STEP_SIZE = 200 
@@ -47,7 +46,7 @@ class Trainer:
     def train_one_epoch(self, dataloader):
         self.model.train() 
         total_loss = 0.0 #[]
-        total_samples = 0
+        num_batches = 0
         for branch1_input, branch2_input, trunk_input, labels in dataloader:
             # Move inputs and labels to the GPU
             branch1_input = branch1_input.to(self.device)
@@ -64,13 +63,15 @@ class Trainer:
             self.optimizer.step()
 
             total_loss += loss.item()
+            #print(f"Raw Loss Value: {loss.item()}")
+
             #total_loss.append(loss.item())
 
             #count sample
-            total_samples += labels.numel()
+            num_batches += 1
 
             #break
-        avg_loss = total_loss / total_samples
+        avg_loss = total_loss / num_batches
         #norm total_loss
         self.train_losses.append(avg_loss)
         return avg_loss
@@ -78,7 +79,7 @@ class Trainer:
     def val_one_epoch(self, dataloader_validation):
         self.model.eval()  # Set the model to evaluation mode
         total_val_loss = 0.0
-        total_samples = 0 
+        num_batches = 0 
         with torch.no_grad():
             for branch1_input, branch2_input, trunk_input, labels in dataloader_validation:
                 branch1_input = branch1_input.to(self.device)
@@ -88,17 +89,20 @@ class Trainer:
 
                 val_loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
                 total_val_loss += val_loss.item()
+                num_batches += 1
+                #print(f"Raw Loss Value: {val_loss.item()}")
 
-                total_samples += labels.numel()
+
+                #total_samples += labels.numel()
   
-        avg_val_loss = total_val_loss / total_samples
+        avg_val_loss = total_val_loss / num_batches
         self.val_losses.append(avg_val_loss)
         return avg_val_loss
 
     def test(self, dataloader_test, epochs = 0):
         self.model.eval()  # Set the model to evaluation mode
         total_test_loss = 0.0
-        total_samples = 0 
+        num_batches = 0 
 
         with torch.no_grad():
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader_test):
@@ -109,7 +113,7 @@ class Trainer:
 
                 test_loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
                 total_test_loss += test_loss.item()
-                total_samples += labels.numel()
+                num_batches += 1
 
                 #plot sample prediction:
                 # prediction = self.model(branch1_input, branch2_input, trunk_input)
@@ -118,7 +122,7 @@ class Trainer:
 
         #self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
 
-        avg_test_loss = total_test_loss / total_samples
+        avg_test_loss = total_test_loss / num_batches
         self.test_loss = avg_test_loss
         return avg_test_loss
     
@@ -155,7 +159,7 @@ class Trainer:
             log_loss(train_loss, temp_file=self.train_log_path)
             log_loss(val_loss, self.val_log_path)
             
-            print(f"Epoch [{epoch+1}/{self.num_epochs}], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}")
+            print(f"Epoch [{epoch+1}/{self.num_epochs}], Train Loss: {train_loss:.6f}, Validation Loss: {val_loss:.6f}")
 
             # every X epoch, some sample viz 
             if epoch % VIZ_epoch_period == 0:
@@ -177,7 +181,7 @@ def load_data_by_split(data_path, bz, shuffle = True):
     for split_name in ['train','val','test']:
         split_data_path=os.path.join(data_path, '{data_type}',split_name)
         images_path,simulation_path = get_paths(split_data_path)
-        dataset_ = TransducerDataset(images_path, simulation_path, loading_method=loading_method)
+        dataset_ = TransducerDataset(images_path, simulation_path, loading_method='individual')
         dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=2)
         split_path_dict[split_name] = dataloader_
 
