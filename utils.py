@@ -132,9 +132,12 @@ class SegmentationVisualizer:
         #image = self.minmax_normalize(image)
         return image.permute(1, 2, 0).cpu().numpy()
         
-    def process_simulation(self, segmentation):
-        #segmentation = self.minmax_normalize(segmentation)
-        return segmentation.cpu().numpy()
+    def process_simulation(self, simulation):
+        #simulation = self.minmax_normalize(simulation)
+        simulation = simulation.cpu().numpy()
+        if len(simulation.shape)<2:
+            return None
+        return simulation
 
     def process_segmentation(self, segmentation):
         #segmentation = self.minmax_normalize(segmentation)
@@ -149,6 +152,8 @@ class SegmentationVisualizer:
         segmentation_np = self.process_segmentation(segmentation)
         #simulation_np 
         prediction_np = self.process_simulation(prediction)
+        if prediction_np is None:
+            prediction_np = np.zeros(segmentation_np.shape)
 
         # Create figure for displaying all plots
         fig, ax = plt.subplots(2, 3, figsize=(15, 6))
