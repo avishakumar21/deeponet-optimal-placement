@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader,Subset
 from torch.optim import Adam
 import os
+import json
 
 #from opnn_transformer import opnn
 from opnn import opnn
@@ -16,8 +17,6 @@ from torch.optim.lr_scheduler import StepLR
 #!!! No slash at the end of the path
 DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet dataset 1000'
 RESULT_FOLDER = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet result 1000'
-#DATA_PATH ="data"
-#RESULT_FOLDER = "result/result" #change folder name
 
 epochs = 10 #total epochs to run
 VIZ_epoch_period = 200 #visualize sample validation set image every VIZ_epoch_period
@@ -26,6 +25,22 @@ STEP_SIZE = 200
 
 EXPECTED_IMG_SIZE = (162, 512)
 EXPECTED_SIM_SIZE = (162, 512)
+
+## -----  LOAD PARAMETER FROM CONFIG --------- ##
+with open('config.json', 'r') as file:
+    config = json.load(file)
+DATA_PATH = config['DATA_PATH']
+RESULT_FOLDER = config['RESULT_FOLDER']
+if config['win']:
+    DATA_PATH = rf'{DATA_PATH}'
+    RESULT_FOLDER = rf'{RESULT_FOLDER}'
+epochs = config['epochs']
+VIZ_epoch_period = config['VIZ_epoch_period']
+BATCHSIZE = config['BATCHSIZE']
+STEP_SIZE = config['STEP_SIZE']
+EXPECTED_IMG_SIZE = config['EXPECTED_IMG_SIZE']
+EXPECTED_SIM_SIZE = config['EXPECTED_SIM_SIZE']
+
 
 class Trainer:
     def __init__(self, model, optimizer, device, num_epochs=1000):
@@ -116,10 +131,8 @@ class Trainer:
                 num_batches += 1
 
                 #plot sample prediction:
-                # prediction = self.model(branch1_input, branch2_input, trunk_input)
-                # prediction = torch.mean(prediction, dim=1)
-                # plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, result_folder=self.result_folder)
-
+                prediction = self.model(branch1_input, branch2_input, trunk_input)
+                plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, result_folder=self.result_folder)
         #self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
 
         avg_test_loss = total_test_loss / num_batches
@@ -140,8 +153,7 @@ class Trainer:
         with torch.no_grad():
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader):
                 prediction = self.model(branch1_input.to(self.device), branch2_input.to(self.device), trunk_input.to(self.device))
-                prediction = torch.mean(prediction, dim=1)
-                #plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
+                plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
         
         return True
 
@@ -234,6 +246,7 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     
 if __name__ == "__main__":
     # Add an optional exp description argument
+    print(f"CONFIG: DATA_PATH: {DATA_PATH}, RESULT_FOLDER: {RESULT_FOLDER}, epochs: {epochs}, VIZ_epoch_period: {VIZ_epoch_period}, BATCHSIZE: {BATCHSIZE}, STEP_SIZE: {STEP_SIZE}, EXPECTED_IMG_SIZE: {EXPECTED_IMG_SIZE}, EXPECTED_SIM_SIZE: {EXPECTED_SIM_SIZE}")
     parser = argparse.ArgumentParser(description="Experiment id or brief description, no space or slash allowed. Good Example: high_resolution_1.")
     parser.add_argument('exp_description', type=str, nargs='?', default="", help='Optional Experiment description. Good Example: high_resolution_1.')
     args = parser.parse_args()
