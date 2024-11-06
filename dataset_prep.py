@@ -40,7 +40,8 @@ class TransducerDataset(Dataset):
         image_path, 
         simulation_path, 
         image_transforms = True,
-        loading_method = 'individual'
+        loading_method = 'individual',
+        device = 'cpu'
     ):
         """
         image_transforms: bool: decide if apply internally defined transform to image
@@ -74,7 +75,7 @@ class TransducerDataset(Dataset):
 
         # CHECK: transducer_locs uses center point of the arc, can swith to arc pixel locations for future / other center point
         transducer_locs = transducer_locs.transpose((1,0))
-        self.transducer_locs = torch.tensor(transducer_locs, dtype=torch.float32) 
+        self.transducer_locs = torch.tensor(transducer_locs, dtype=torch.float32).to(device)
 
         x = np.arange(0, self.sim_height)
         y = np.arange(0, self.sim_width)
@@ -82,6 +83,9 @@ class TransducerDataset(Dataset):
         locations = np.stack([xx.ravel(), yy.ravel()], axis=-1)
         self.sensor_locations = locations
 
+        #Preload
+        self.preloaded_images = [self.image_load(i).to(device) for i in range(len(self.image_paths))]
+        self.preloaded_simulations = [self.simulation_indv_load(i).to(device) for i in range(len(self.simulation_paths))]
         
 
     def get_sensor_location(self):
@@ -162,7 +166,7 @@ class TransducerDataset(Dataset):
     def __getitem__(self, index):
         if self.loading_method =='individual':
             #Images
-            image = self.image_load(index//8)
+            image = self.preloaded_images[index//8]
 
             #Transducer location
             transducer_locs = self.transducer_locs[index%8]
@@ -171,29 +175,28 @@ class TransducerDataset(Dataset):
             locs = self.eval_locs(type = 'sq')
 
             #Simulation
-            simulations = self.simulation_indv_load(index)
+            simulations = self.preloaded_simulations[index]
 
 
-        elif self.loading_method == 'group':
-            #Images
-            image = self.image_load(index)
+        # elif self.loading_method == 'group':
+        #     #Images
+        #     image = self.image_load(index)
 
-            #Transducer location
-            transducer_locs = self.transducer_locs
+        #     #Transducer location
+        #     transducer_locs = self.transducer_locs
 
-            #evaludation location (sensor for deepOnet)
-            loc = self.eval_locs(type = 'sq')
-            locs_expanded = loc.unsqueeze(0)
-            # Repeat along the new dimension to get shape (8, w, h, 2)
-            locs= locs_expanded.repeat(8, 1, 1, 1)
+        #     #evaludation location (sensor for deepOnet)
+        #     loc = self.eval_locs(type = 'sq')
+        #     locs_expanded = loc.unsqueeze(0)
+        #     # Repeat along the new dimension to get shape (8, w, h, 2)
+        #     locs= locs_expanded.repeat(8, 1, 1, 1)
 
-            #Simulation
-            simulations = self.simulation_group_load(index)
+        #     #Simulation
+        #     simulations = self.simulation_group_load(index)
         elif self.loading_method[:3] == 'loc':
             loc_index = int(self.loading_method[-1])
             #Images
-            image = self.image_load(index)
-
+            image = self.preloaded_images[index]
             #Transducer location
             transducer_locs = self.transducer_locs[loc_index]
             
@@ -201,7 +204,7 @@ class TransducerDataset(Dataset):
             locs = self.eval_locs(type = 'sq')
 
             #Simulation
-            simulations = self.simulation_group_load(index)[loc_index]
+            simulations = self.preloaded_simulations[index*8 + loc_index]
         else:
             ...
 
