@@ -46,7 +46,7 @@ class TransducerDataset(Dataset):
         """
         image_transforms: bool: decide if apply internally defined transform to image
         loading_method: str, inidividual / group.
-                - inidividual: treat each transducer location - image pair as one sample
+                - individual: treat each transducer location - image pair as one sample
                 - group: treat each image and corresponding 8 transducer location as one object
                 - loc_<location_index>: load only the dataset of transducer in 1 location
         """
@@ -56,6 +56,7 @@ class TransducerDataset(Dataset):
         # self.tfms = tfms
         # self.norm_tfms = norm_tfms
         self.loading_method = loading_method
+        self.deivce = device
 
 
         # #Image width and Height
@@ -81,7 +82,7 @@ class TransducerDataset(Dataset):
         y = np.arange(0, self.sim_width)
         xx, yy = np.meshgrid(x, y)
         locations = np.stack([xx.ravel(), yy.ravel()], axis=-1)
-        self.sensor_locations = locations
+        self.sensor_locations = torch.tensor(locations, dtype=torch.float).to(self.device)
 
         #Preload
         self.preloaded_images = [self.image_load(i).to(device) for i in range(len(self.image_paths))]
@@ -157,11 +158,11 @@ class TransducerDataset(Dataset):
             locations = self.sensor_locations # array (x,y)
         #Square
         elif type == 'sq':
-            locations = self.sensor_locations.reshape(self.sim_width,self.sim_height,2).transpose(1,0,2) # array of array of (x,y )
+            locations = self.sensor_locations.reshape(self.sim_width,self.sim_height,2).permute(1,0,2)
         #Cubic
         else:
             ...
-        return torch.tensor(locations, dtype=torch.float)
+        return locations
 
     def __getitem__(self, index):
         if self.loading_method =='individual':

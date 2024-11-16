@@ -40,7 +40,8 @@ BATCHSIZE = config['BATCHSIZE']
 STEP_SIZE = config['STEP_SIZE']
 EXPECTED_IMG_SIZE = config['EXPECTED_IMG_SIZE']
 EXPECTED_SIM_SIZE = config['EXPECTED_SIM_SIZE']
-
+LOADING_METHOD = config['loading_method']
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Trainer:
     def __init__(self, model, optimizer, device, num_epochs=1000):
@@ -187,21 +188,21 @@ class Trainer:
         return self.model
     
 
-def load_data_by_split(data_path, bz, shuffle = True):
+def load_data_by_split(data_path, bz, shuffle = True,device = 'cpu'):
     print('-'*15, 'DATA READIN BY SPLIT', '-'*15)
     split_path_dict = {}
     for split_name in ['train','val','test']:
         split_data_path=os.path.join(data_path, '{data_type}',split_name)
         images_path,simulation_path = get_paths(split_data_path)
-        dataset_ = TransducerDataset(images_path, simulation_path, loading_method='individual')
-        dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=2)
+        dataset_ = TransducerDataset(images_path, simulation_path, loading_method=LOADING_METHOD, device=device)
+        dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=0)
         split_path_dict[split_name] = dataloader_
 
     return list(split_path_dict.values())
 
 def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description = ""):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    print(f'DEVICE availiable:{device}')
     # Specify Unique Directories for result
     print('-'*15, 'CHECK RESULT DIRECTORY', '-'*15)
     result_folder = result_folder+get_time_YYYYMMDDHH()+'_'+folder_description
