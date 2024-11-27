@@ -54,8 +54,8 @@ class Trainer:
 
     def set_result_path (self, result_path):
         self.result_folder = result_path
-        self.val_log_path = os.path.join(self.result_folder, 'loss_log_train.txt')
-        self.train_log_path = os.path.join(self.result_folder, 'loss_log_val.txt')
+        self.val_log_path = os.path.join(self.result_folder, 'loss_log_val.txt')
+        self.train_log_path = os.path.join(self.result_folder, 'loss_log_train.txt')
         print(f"Result of this Training will be stored at {result_path}")
 
     def train_one_epoch(self, dataloader):
