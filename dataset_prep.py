@@ -27,7 +27,6 @@ def get_paths(root_path):
     print('image path', (f"{root_path}/*").format(data_type = 'images'))
     print('masks path', (f"{root_path}/*").format(data_type = 'masks'))
     print('simulation path', (f"{root_path}/*").format(data_type = 'simulation_outputs'))
-
     #return images_path, simulation_path, 
     return masks_path, simulation_path #use masks as input
 

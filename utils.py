@@ -158,31 +158,31 @@ class SegmentationVisualizer:
         # Create figure for displaying all plots
         fig, ax = plt.subplots(2, 3, figsize=(15, 6))
 
-        # Plot original image
+        # Plot original input image
         ax[0, 0].imshow(image_np)
         ax[0, 0].set_title('Original Image')
 
-        # Plot segmentation on image
+        # Plot simulation on image
         ax[0, 1].imshow(image_np)
         ax[0, 1].imshow(segmentation_np, cmap=self.color_map, alpha=0.5, vmin=self.global_min, vmax=self.global_max)
         ax[0, 1].set_title('Pressure Simulation on Image')
 
         # Plot prediction on image
         ax[0, 2].imshow(image_np)
-        ax[0, 2].imshow(prediction_np, cmap=self.color_map, alpha=0.5)
+        ax[0, 2].imshow(prediction_np, cmap=self.color_map, alpha=0.5,vmin=self.global_min, vmax=self.global_max)
         ax[0, 2].set_title('Pressure Prediction on Image')
 
-        # Plot segmentation
-        seg_plot =ax[1, 0].imshow(segmentation_np, cmap=self.color_map)
+        # Plot simulation
+        seg_plot =ax[1, 0].imshow(segmentation_np, cmap=self.color_map,vmin=self.global_min, vmax=self.global_max)
         ax[1, 0].set_title('Simulation')
 
         # Plot prediction
-        ax[1, 1].imshow(prediction_np, cmap=self.color_map)
+        ax[1, 1].imshow(prediction_np, cmap=self.color_map,vmin=self.global_min, vmax=self.global_max)
         ax[1, 1].set_title('Prediction')
 
-        # Plot prediction - segmentation
-        diff = prediction_np - segmentation_np
-        ax[1, 2].imshow(diff, cmap=self.color_map)
+        # Plot prediction - simulation
+        diff = np.abs(prediction_np - segmentation_np)
+        ax[1, 2].imshow(diff, cmap=self.color_map, vmin=self.global_min, vmax=self.global_max)
         ax[1, 2].set_title('Prediction - Simulation')
 
         if shared_colorbar_ax is None:
