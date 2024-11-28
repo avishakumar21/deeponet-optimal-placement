@@ -13,19 +13,6 @@ from utils import ensure_directory_exists,get_time_YYYYMMDDHH
 import argparse
 from torch.optim.lr_scheduler import StepLR
 
-
-#!!! No slash at the end of the path
-DATA_PATH = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet dataset 1000'
-RESULT_FOLDER = r'C:\Users\akumar80\Documents\Avisha Kumar Lab Work\deeponet result 1000'
-
-epochs = 10 #total epochs to run
-VIZ_epoch_period = 200 #visualize sample validation set image every VIZ_epoch_period
-BATCHSIZE = 16 
-STEP_SIZE = 200 
-
-EXPECTED_IMG_SIZE = (162, 512)
-EXPECTED_SIM_SIZE = (162, 512)
-
 ## -----  LOAD PARAMETER FROM CONFIG --------- ##
 with open('config.json', 'r') as file:
     config = json.load(file)
@@ -40,6 +27,7 @@ BATCHSIZE = config['BATCHSIZE']
 STEP_SIZE = config['STEP_SIZE']
 EXPECTED_IMG_SIZE = config['EXPECTED_IMG_SIZE']
 EXPECTED_SIM_SIZE = config['EXPECTED_SIM_SIZE']
+LOADING_METHOD = config['loading_method']
 
 
 class Trainer:
@@ -63,29 +51,29 @@ class Trainer:
         total_loss = 0.0 #[]
         num_batches = 0
         for branch1_input, branch2_input, trunk_input, labels in dataloader:
-            # Move inputs and labels to the GPU
-            branch1_input = branch1_input.to(self.device)
-            branch2_input = branch2_input.to(self.device)
-            trunk_input = trunk_input.to(self.device)
-            labels = labels.to(self.device)
-            
-            # Calculate loss
-            loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
+            # print(torch.cuda.memory_allocated(0))
 
-            # Backpropagation
+            # Move inputs and labels to the GPU (for CPU dataloader)
+            # branch1_input = branch1_input.to(self.device)
+            # branch2_input = branch2_input.to(self.device)
+            # trunk_input = trunk_input.to(self.device)
+            # labels = labels.to(self.device)
+            
+            loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
             total_loss += loss.item()
-            #print(f"Raw Loss Value: {loss.item()}")
-
-            #total_loss.append(loss.item())
-
-            #count sample
             num_batches += 1
 
             #break
+            # Total parameters and trainable parameters.
+            # total_params = sum(p.numel() for p in self.model.parameters())
+            # print(f"{total_params:,} total parameters.")
+            # total_trainable_params = sum(
+            # p.numel() for p in self.model.parameters() if p.requires_grad)
+            # print(f"{total_trainable_params:,} training parameters.")
         avg_loss = total_loss / num_batches
         #norm total_loss
         self.train_losses.append(avg_loss)
@@ -97,18 +85,14 @@ class Trainer:
         num_batches = 0 
         with torch.no_grad():
             for branch1_input, branch2_input, trunk_input, labels in dataloader_validation:
-                branch1_input = branch1_input.to(self.device)
-                branch2_input = branch2_input.to(self.device)
-                trunk_input = trunk_input.to(self.device)
-                labels = labels.to(self.device)
+                # branch1_input = branch1_input.to(self.device)
+                # branch2_input = branch2_input.to(self.device)
+                # trunk_input = trunk_input.to(self.device)
+                # labels = labels.to(self.device)
 
                 val_loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
                 total_val_loss += val_loss.item()
                 num_batches += 1
-                #print(f"Raw Loss Value: {val_loss.item()}")
-
-
-                #total_samples += labels.numel()
   
         avg_val_loss = total_val_loss / num_batches
         self.val_losses.append(avg_val_loss)
@@ -121,10 +105,10 @@ class Trainer:
 
         with torch.no_grad():
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader_test):
-                branch1_input = branch1_input.to(self.device)
-                branch2_input = branch2_input.to(self.device)
-                trunk_input = trunk_input.to(self.device)
-                labels = labels.to(self.device)
+                # branch1_input = branch1_input.to(self.device)
+                # branch2_input = branch2_input.to(self.device)
+                # trunk_input = trunk_input.to(self.device)
+                # labels = labels.to(self.device)
 
                 test_loss = self.model.loss(branch1_input, branch2_input, trunk_input, labels)
                 total_test_loss += test_loss.item()
@@ -133,7 +117,7 @@ class Trainer:
                 #plot sample prediction:
                 prediction = self.model(branch1_input, branch2_input, trunk_input)
                 plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, result_folder=self.result_folder)
-        #self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
+        
 
         avg_test_loss = total_test_loss / num_batches
         self.test_loss = avg_test_loss
@@ -152,7 +136,7 @@ class Trainer:
         self.model.eval()  # Set the model to evaluation mode
         with torch.no_grad():
             for batch, (branch1_input, branch2_input, trunk_input, labels) in enumerate(dataloader):
-                prediction = self.model(branch1_input.to(self.device), branch2_input.to(self.device), trunk_input.to(self.device))
+                prediction = self.model(branch1_input, branch2_input, trunk_input)
                 plot_prediction(branch1_input.cpu(), labels.cpu(), prediction.cpu(), batch, comment = comment, result_folder=self.result_folder)
         
         return True
@@ -179,29 +163,29 @@ class Trainer:
 
         # Test Model
         if dataloader_test is not None:
+            # self.visualize_prediction(dataloader_test, comment = 'testset',subset=False)
             test_loss = self.test(dataloader_test)
             print(f"Test Loss: {test_loss:.4f}")
 
         # Store model
         store_model(self.model,self.optimizer, epoch, self.result_folder)
         return self.model
-    
 
-def load_data_by_split(data_path, bz, shuffle = True):
+def load_data_by_split(data_path, bz, shuffle = True, device = 'cpu'):
     print('-'*15, 'DATA READIN BY SPLIT', '-'*15)
     split_path_dict = {}
     for split_name in ['train','val','test']:
         split_data_path=os.path.join(data_path, '{data_type}',split_name)
         images_path,simulation_path = get_paths(split_data_path)
-        dataset_ = TransducerDataset(images_path, simulation_path, loading_method='individual')
-        dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=2)
+        dataset_ = TransducerDataset(images_path, simulation_path, loading_method=LOADING_METHOD, device =device )
+        dataloader_ = DataLoader(dataset_, batch_size=bz, shuffle=shuffle, num_workers=0)
         split_path_dict[split_name] = dataloader_
 
     return list(split_path_dict.values())
 
 def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description = ""):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    print(f'DEVICE availiable:{device}')
     # Specify Unique Directories for result
     print('-'*15, 'CHECK RESULT DIRECTORY', '-'*15)
     result_folder = result_folder+get_time_YYYYMMDDHH()+'_'+folder_description
@@ -220,25 +204,20 @@ def main(bz, num_epochs=100, result_folder = RESULT_FOLDER, folder_description =
     model = opnn(branch2_dim, trunk_dim, geometry_dim).to(device) # for CNN
     # model = opnn(branch2_dim, trunk_dim, geometry_dim, patch_size = 9).to(device) # for transformer
 
-
-
     # Initialize optimizer
     #optimizer = Adam(model.parameters(), lr=0.0001) 
-    optimizer = Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
-
+    optimizer = Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
 
     scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=0.5)  # Reduce LR every 500 steps
 
-
     # Prepare data
-    dataloader_train, dataloader_valid,dataloader_test = load_data_by_split(DATA_PATH, bz)
+    dataloader_train, dataloader_valid,dataloader_test = load_data_by_split(DATA_PATH, bz, device=device)
 
     # Train the model
     print('-'*15, 'TRAIN', '-'*15)
     trainer = Trainer(model, optimizer, device, num_epochs)
     trainer.set_result_path(result_folder)
     model = trainer.train(dataloader_train, dataloader_valid, dataloader_test, scheduler)
-
     #Plot Losses
     file_paths = [trainer.train_log_path,trainer.val_log_path]
     plot_logs(file_paths, output_image=os.path.join(trainer.result_folder, "loss_plot.png"))
