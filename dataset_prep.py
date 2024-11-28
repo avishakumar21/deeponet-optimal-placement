@@ -56,7 +56,7 @@ class TransducerDataset(Dataset):
         # self.tfms = tfms
         # self.norm_tfms = norm_tfms
         self.loading_method = loading_method
-        self.deivce = device
+        self.device = device
 
 
         # #Image width and Height
@@ -88,7 +88,8 @@ class TransducerDataset(Dataset):
         self.preloaded_images = [self.image_load(i).to(device) for i in range(len(self.image_paths))]
         self.preloaded_simulations = [self.simulation_indv_load(i).to(device) for i in range(len(self.simulation_paths))]
         
-
+        print(len(self.preloaded_images))
+        print(len(self.image_paths))
     def get_sensor_location(self):
         # Generate array of coordinates / sensor
         return
