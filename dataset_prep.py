@@ -20,15 +20,16 @@ def get_paths(root_path):
     # given path to dataset (contain sub directory images, masks, simulation_outputs)
     images_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'images'), '*'))
     images_path.sort()
-    # masks_path = glob.glob(f"{root_path}/masks/*")
-    # masks_path.sort()
+    masks_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'masks'), '*'))
+    masks_path.sort()
     simulation_path = glob.glob(os.path.join((root_path).format(data_type = 'simulation_outputs'), '*_max_pressure.mat'), recursive=True)
     simulation_path.sort()
     print('image path', (f"{root_path}/*").format(data_type = 'images'))
+    print('masks path', (f"{root_path}/*").format(data_type = 'masks'))
     print('simulation path', (f"{root_path}/*").format(data_type = 'simulation_outputs'))
 
-    #return images_path, masks_path, simulation_path, 
-    return images_path, simulation_path
+    #return images_path, simulation_path, 
+    return masks_path, simulation_path #use masks as input
 
 
 
@@ -45,7 +46,7 @@ class TransducerDataset(Dataset):
     ):
         """
         image_transforms: bool: decide if apply internally defined transform to image
-        loading_method: str, inidividual / group.
+        loading_method: str, individual / group.
                 - individual: treat each transducer location - image pair as one sample
                 - group: treat each image and corresponding 8 transducer location as one object
                 - loc_<location_index>: load only the dataset of transducer in 1 location
@@ -56,7 +57,7 @@ class TransducerDataset(Dataset):
         # self.tfms = tfms
         # self.norm_tfms = norm_tfms
         self.loading_method = loading_method
-        self.device = device
+        self.device  = device
 
 
         # #Image width and Height
@@ -88,8 +89,6 @@ class TransducerDataset(Dataset):
         self.preloaded_images = [self.image_load(i).to(device) for i in range(len(self.image_paths))]
         self.preloaded_simulations = [self.simulation_indv_load(i).to(device) for i in range(len(self.simulation_paths))]
         
-        print(len(self.preloaded_images))
-        print(len(self.image_paths))
     def get_sensor_location(self):
         # Generate array of coordinates / sensor
         return
@@ -159,11 +158,11 @@ class TransducerDataset(Dataset):
             locations = self.sensor_locations # array (x,y)
         #Square
         elif type == 'sq':
-            locations = self.sensor_locations.reshape(self.sim_width,self.sim_height,2).permute(1,0,2)
+            locations = self.sensor_locations.reshape(self.sim_width,self.sim_height,2).permute(1,0,2) # array of array of (x,y )
         #Cubic
         else:
             ...
-        return locations
+        return locations #torch.tensor(locations, dtype=torch.float).to(self.device)
 
     def __getitem__(self, index):
         if self.loading_method =='individual':
