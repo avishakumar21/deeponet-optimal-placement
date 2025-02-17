@@ -16,19 +16,20 @@ import scipy.io
 
 """
 
-def get_paths(root_path):
+def get_paths(root_path, input_type = 'images'):
     # given path to dataset (contain sub directory images, masks, simulation_outputs)
-    images_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'images'), '*'))
-    images_path.sort()
-    masks_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'masks'), '*'))
-    masks_path.sort()
+    # images_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'images'), '*'))
+    # images_path.sort()
+    # masks_path = glob.glob(os.path.join(f"{root_path}".format(data_type = 'masks'), '*'))
+    # masks_path.sort()
+    input_path  =  glob.glob(os.path.join(f"{root_path}".format(data_type = input_type), '*'))
+    input_path.sort()
     simulation_path = glob.glob(os.path.join((root_path).format(data_type = 'simulation_outputs'), '*_max_pressure.mat'), recursive=True)
     simulation_path.sort()
-    print('image path', (f"{root_path}/*").format(data_type = 'images'))
-    print('masks path', (f"{root_path}/*").format(data_type = 'masks'))
+    print('input path', (f"{root_path}/*").format(data_type = input_type))
     print('simulation path', (f"{root_path}/*").format(data_type = 'simulation_outputs'))
     #return images_path, simulation_path, 
-    return masks_path, simulation_path #use masks as input
+    return input_path, simulation_path #use masks as input
 
 
 

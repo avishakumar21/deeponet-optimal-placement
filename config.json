@@ -5,7 +5,7 @@
     "loading_method" :"loc_6",
     "epochs":3,
     "VIZ_epoch_period":2,
-    "BATCHSIZE":16,
+    "BATCHSIZE":2,
     "STEP_SIZE":200,
     
     "prediction_plot":true,
